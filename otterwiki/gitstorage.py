@@ -340,9 +340,11 @@ class GitStorage(object):
         # store file on filesystem
         with open(os.path.join(self.path, filename), mode) as f:
             f.write(content)
+
         # check if file has changed
-        diff = self.repo.index.diff(None, paths=filename)
-        if len(diff) == 0 and filename not in self.repo.untracked_files:
+        git_filename = pathlib.Path(filename).as_posix()
+        diff = self.repo.index.diff(None, paths=git_filename)
+        if len(diff) == 0 and git_filename not in self.repo.untracked_files:
             return False
         # add and commit to git
         index = self.repo.index
@@ -486,13 +488,14 @@ class GitStorage(object):
             fullpath = os.path.normpath(os.path.join(self.path, p))
         else:
             fullpath = self.path
-        # regexp to strip the root path from any path
-        striproot = re.compile(r"^{}\/?".format(re.escape(fullpath)))
         # initialize empty results
         result_files, result_directories = [], []
         # walk the path
         for root, dirs, files in os.walk(fullpath):
-            root = striproot.sub("", root)
+            root = os.path.relpath(root, fullpath)
+            # relpath returns '.' for the root directory itself
+            if root == '.':
+                root = ''
             # check the depth
             if depth is not None:
                 d = len(split_path(root))
@@ -503,11 +506,11 @@ class GitStorage(object):
             # collect files
             for file in files:
                 # add the root and all subdirectories
-                fn = os.path.join(root, file)
+                fn = pathlib.PurePath(root, file).as_posix() if root else file
                 result_files.append(fn)
             # collect directories
             for dir in dirs:
-                dn = os.path.join(root, dir)
+                dn = pathlib.PurePath(root, dir).as_posix() if root else dir
                 result_directories.append(dn)
 
         return sorted(result_files), sorted(result_directories)

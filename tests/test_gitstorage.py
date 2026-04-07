@@ -2,6 +2,8 @@
 # vim: set et ts=8 sts=4 sw=4 ai:
 
 import os
+import pathlib
+
 import pytest
 import tempfile
 from pprint import pprint
@@ -232,7 +234,7 @@ def test_store_subdir(storage):
     assert True == storage.isdir(subdir)
     # check via file list
     files, directories = storage.list()
-    assert filename in files
+    assert pathlib.Path(filename).as_posix() in files
     assert "test_subdir" in directories
 
 
